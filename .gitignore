@@ -1,0 +1,13 @@
+.*.swp
+*~
+Makefile.in
+/autom4te.cache/
+/configure
+/install-sh
+tags
+/aclocal.m4
+/reaccapture-config.h.in
+/compile
+/depcomp
+/missing
+/INSTALL
