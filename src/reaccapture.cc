@@ -527,7 +527,6 @@ int print_summary()
 static char *parse_channels_n_to_n(char *arg, uint64_t *channels)
 {
 	char *nxt = 0;
-	fprintf(stderr, "parse_channels_n_to_n: strtol(%s)\n", arg);
 	int x = strtol(arg, &nxt, 10);
 	if(x<0 || 40<x) return NULL;
 	if(nxt==arg) return NULL;
@@ -545,17 +544,19 @@ static char *parse_channels_n_to_n(char *arg, uint64_t *channels)
 
 static int parse_channels(char *arg, uint64_t *channels)
 {
-	fprintf(stderr, "parse_channels: arg=%s\n", arg);
 	*channels = 0;
 	while(*arg) {
 		char *nxt = parse_channels_n_to_n(arg, channels);
 		if(!nxt) return __LINE__;
-		fprintf(stderr, "parse_channels: nxt=%s\n", nxt);
 		if(nxt != arg) arg = nxt; else break;
 		while(*arg && !isdigit(*arg)) arg++;
 	}
 	return 0;
 }
+
+static inline uint64_t channel_l2r(uint64_t ch) { return (ch << 1) & 0xAAAAAAAAAALL; }
+static inline uint64_t channel_r2l(uint64_t ch) { return (ch >> 1) & 0x5555555555LL; }
+static inline uint64_t channel_l2r_or_r2l(uint64_t ch) { return channel_l2r(ch) | channel_r2l(ch); }
 
 static const char *help_message = "\
 reaccapture - capture/postprocess REAC packets\n\
@@ -573,6 +574,8 @@ Output options:\n\
 		Save audio data as 16-bit PCM format.\n\
 	--save-channels arg\n\
 		Limit to save channels specified by arg.\n\
+	--stereo-channels arg\n\
+		Couple pair(s) of adjacent channels as stereo.\n\
 Other options:\n\
 	-v\n\
 		Increase verbose level.\n\
@@ -617,7 +620,7 @@ int main(int argc, char **argv)
 					fprintf(stderr, "Error: option %s\n", ai);
 					return __LINE__;
 				}
-				stereo_channel |= (stereo_channel<<1 & 0xAAAAAAAAAALL) | (stereo_channel>>1 & 0x5555555555LL);
+				stereo_channel |= channel_l2r_or_r2l(stereo_channel);
 			}
 			else if(!strcmp(ai, "--stereo-channels-8")) {
 				using settings::stereo_channel;
@@ -626,7 +629,7 @@ int main(int argc, char **argv)
 					return __LINE__;
 				}
 				stereo_channel <<= 8;
-				stereo_channel |= (stereo_channel<<1 & 0xAAAAAAAAAALL) | (stereo_channel>>1 & 0x5555555555LL);
+				stereo_channel |= channel_l2r_or_r2l(stereo_channel);
 			}
 			else if(!strcmp(ai, "--load-file"))
 				settings::mode = reacmode_file;
@@ -649,6 +652,7 @@ int main(int argc, char **argv)
 				break;
 			case 'v':
 				settings::verbose ++;
+				break;
 			default:
 				fprintf(stderr, "Error: unknown option %c\n", c);
 				return __LINE__;
@@ -666,10 +670,15 @@ int main(int argc, char **argv)
 	}
 
 	if(!fp_inp) fp_inp = stdin;
+	if(settings::verbose>2) fprintf(stderr, "stereo_channel: %010x\n", settings::stereo_channel);
 
-	settings::stereo_channel &= ~(settings::skip_channel | (settings::skip_channel<<1 & 0xAAAAAAAAAALL) | (settings::skip_channel>>1 & 0x5555555555LL));
+	settings::skip_channel &= ~channel_l2r_or_r2l(~settings::skip_channel & settings::stereo_channel);
+	settings::stereo_channel &= ~settings::skip_channel;
 
 	using settings::verbose;
+
+	if(verbose>2) fprintf(stderr, "stereo_channel: %010x\n", settings::stereo_channel);
+	if(verbose>2) fprintf(stderr, "skip_channel:   %010x\n", settings::skip_channel);
 
 	if(settings::save_mode==save_pcm || settings::save_mode==save_pcm16)
 		save_pcm_init();
