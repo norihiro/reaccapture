@@ -83,13 +83,28 @@ int load_packets(FILE *fp)
 	return 0;
 }
 
+static FILE* fopen_output(int ch, const char *fmt)
+{
+	if(settings::of_name[ch]) {
+		return fopen(settings::of_name[ch], "wb");
+	}
+	else {
+		char name[64]; sprintf(name, fmt, ch+1);
+		return fopen(name, "wb");
+	}
+}
+
 static
 int save_pcm_init()
 {
 	for(int i=0; i<40; i++) {
 		if(settings::skip_channel & (1LL<<i)) continue;
-		char name[64]; sprintf(name, "output-%02d.pcm", i+1);
-		fp_outputs[i] = (settings::stereo_channel & (1LL<<i) && i&1) ? fp_outputs[i-1] : fopen(name, "wb");
+		if(settings::stereo_channel & (1LL<<i) && i&1) {
+			fp_outputs[i] = fp_outputs[i-1];
+		}
+		else {
+			fp_outputs[i] = fopen_output(i, "output-%02d.pcm");
+		}
 	}
 	return 0;
 }
@@ -103,8 +118,7 @@ int save_wav_init()
 			fp_outputs[i] = fp_outputs[i-1];
 		}
 		else {
-			char name[64]; sprintf(name, "output-%02d.wav", i+1);
-			fp_outputs[i] = fopen(name, "wb");
+			fp_outputs[i] = fopen_output(i, "output-%02d.wav");
 			uint8_t data[44] = {"RIFF"};
 			fwrite(data, 44, 1, fp_outputs[i]);
 		}
@@ -576,6 +590,8 @@ Output options:\n\
 		Limit to save channels specified by arg.\n\
 	--stereo-channels arg\n\
 		Couple pair(s) of adjacent channels as stereo.\n\
+	--name-{1-40} file_name\n\
+		Set file_name as the output file name.\n\
 Other options:\n\
 	-v\n\
 		Increase verbose level.\n\
@@ -630,6 +646,19 @@ int main(int argc, char **argv)
 				}
 				stereo_channel <<= 8;
 				stereo_channel |= channel_l2r_or_r2l(stereo_channel);
+			}
+			else if(!strncmp(ai, "--name-", 7) && isdigit(ai[7]) && (!ai[8] || isdigit(ai[8]) && !ai[9])) {
+				using settings::of_name;
+				int ch = atoi(ai+7);
+				if(ch<1 || 40<=ch) {
+					fprintf(stderr, "Error: option %s out of range.\n", ai);
+					return __LINE__;
+				}
+				if(i+1>=argc) {
+					fprintf(stderr, "Error: option %s requires filename.", ai);
+					return __LINE__;
+				}
+				of_name[ch-1] = argv[++i];
 			}
 			else if(!strcmp(ai, "--load-file"))
 				settings::mode = reacmode_file;
