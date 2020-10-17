@@ -9,7 +9,15 @@
 # define V(v)
 #endif
 
-enum reac_mode_e { reacmode_master, reacmode_slave, reacmode_split, reacmode_promiscuous, reacmode_file, reacmode_pcap_file };
+enum reac_mode_e {
+	reacmode_master,
+	reacmode_slave,
+	reacmode_split,
+	reacmode_promiscuous,
+	reacmode_file,
+	reacmode_pcap_file,
+	reacmode_pcap_dev,
+};
 enum save_mode_e {
 	save_none=0,
 	save_packets,

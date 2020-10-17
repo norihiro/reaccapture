@@ -525,6 +525,7 @@ int rr_loop(ringbuf &rb)
 }
 
 int load_pcap_offline(FILE *fp, int (*got_msg)(const uint8_t *, int));
+int load_pcap_device(const char *if_name, int (*got_msg)(const uint8_t *, int));
 
 int print_summary()
 {
@@ -579,6 +580,8 @@ Input options:\n\
 	--load-pcap-file\n\
 		Load pcap format file. The file can be specified in argument.\n\
 		If no file is specified, it will read from stdin.\n\
+	-d if_name\n\
+		Capture if_name device in promiscuous mode.\n\
 Output options:\n\
 	--save-wav-{16,24}\n\
 		Save audio data as 16-bit or 24-bit WAVE format.\n\
@@ -678,6 +681,7 @@ int main(int argc, char **argv)
 		else if(*ai=='-') while(char c=*++ai) switch(c) {
 			case 'd':
 				settings::if_name = argv[++i];
+				settings::mode = reacmode_pcap_dev;
 				break;
 			case 'v':
 				settings::verbose ++;
@@ -722,6 +726,9 @@ int main(int argc, char **argv)
 	}
 	else if(settings::mode==reacmode_pcap_file) {
 		ret = load_pcap_offline(fp_inp, got_msg) | print_summary();
+	}
+	else if(settings::mode==reacmode_pcap_dev) {
+		ret = load_pcap_device(settings::if_name, got_msg) | print_summary();
 	}
 	else {
 
