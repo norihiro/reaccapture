@@ -89,7 +89,9 @@ static FILE* fopen_output(int ch, const char *fmt)
 		return fopen(settings::of_name[ch], "wb");
 	}
 	else {
-		char name[64]; sprintf(name, fmt, ch+1);
+		char name[64];
+		snprintf(name, sizeof(name), fmt, ch+1);
+		name[sizeof(name)-1] = 0;
 		return fopen(name, "wb");
 	}
 }
@@ -601,10 +603,10 @@ Other options:\n\
 \n\
 Version: " PACKAGE_STRING;
 
-int main(int argc, char **argv)
+static FILE *fp_inp = NULL;
+
+int parse_arg(int argc, char **argv)
 {
-	FILE *fp_inp = NULL;
-	// parse arguments
 	for(int i=1; i<argc; i++) {
 		char *ai = argv[i];
 		if(ai[0]=='-' && ai[1]=='-') {
@@ -699,11 +701,20 @@ int main(int argc, char **argv)
 		}
 		else {
 			fprintf(stderr, "Error: unknown argument %s\n", ai);
+			return __LINE__;
 		}
 	}
 
 	if(!fp_inp) fp_inp = stdin;
-	if(settings::verbose>2) fprintf(stderr, "stereo_channel: %010x\n", settings::stereo_channel);
+
+	return 0;
+}
+
+int main(int argc, char **argv)
+{
+	int ret = parse_arg(argc, argv);
+	if (ret)
+		return ret;
 
 	settings::skip_channel &= ~channel_l2r_or_r2l(~settings::skip_channel & settings::stereo_channel);
 	settings::stereo_channel &= ~settings::skip_channel;
@@ -719,7 +730,6 @@ int main(int argc, char **argv)
 	if(settings::save_mode==save_wave24 || settings::save_mode==save_wave16)
 		save_wav_init();
 
-	int ret = 0;
 	// Won't use NIC but load from a file.
 	if(settings::mode==reacmode_file) {
 		ret = load_packets(fp_inp) | print_summary();
@@ -731,7 +741,6 @@ int main(int argc, char **argv)
 		ret = load_pcap_device(settings::if_name, got_msg) | print_summary();
 	}
 	else {
-
 		g_handshake_state = HANDSHAKE_NOT_INITIATED;
 		reacsocket *rs = new reacsocket();
 
