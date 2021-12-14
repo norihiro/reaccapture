@@ -655,7 +655,7 @@ int parse_arg(int argc, char **argv)
 			else if(!strncmp(ai, "--name-", 7) && isdigit(ai[7]) && (!ai[8] || isdigit(ai[8]) && !ai[9])) {
 				using settings::of_name;
 				int ch = atoi(ai+7);
-				if(ch<1 || 40<=ch) {
+				if(ch<1 || 40<ch) {
 					fprintf(stderr, "Error: option %s out of range.\n", ai);
 					return __LINE__;
 				}
