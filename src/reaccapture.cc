@@ -154,7 +154,7 @@ int save_wav_fin()
 		p = add16n(p, 1); // format: 1=linear PCM
 		p = add16n(p, n_channel); // #channels: 1=mono, 2=stereo
 		p = add32n(p, 48000); // sampling rate
-		p = add32n(p, n_byte_sample*48000); // data rate [B/s]
+		p = add32n(p, n_byte_sample*n_channel*48000); // data rate [B/s]
 		p = add16n(p, n_byte_sample*n_channel); // block size [B/sample], if stereo, make it twice.
 		p = add16n(p, n_byte_sample*8); // bit/sample, independent to stereo or mono.
 
