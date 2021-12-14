@@ -9,7 +9,6 @@
 
 // to suppress warning
 #include "mac-reacdriver/REACDataStream.h"
-#include "sys/kpi_mbuf.h"
 #undef ETHER_ADDR_LEN
 
 #include <sys/select.h>

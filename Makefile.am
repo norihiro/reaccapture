@@ -23,7 +23,6 @@ nobase_include_HEADERS = \
 	mac-wrapper/libkern/OSTypes.h \
 	mac-wrapper/libkern/c++/OSObject.h \
 	mac-wrapper/libkern/c++/OSArray.h \
-	mac-wrapper/IOKit/IOReturn.h \
-	mac-wrapper/sys/kpi_mbuf.h
+	mac-wrapper/IOKit/IOReturn.h
 
 AM_CPPFLAGS = -I$(top_srcdir)/mac-wrapper
