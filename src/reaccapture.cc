@@ -11,16 +11,6 @@
 #include "mac-reacdriver/REACDataStream.h"
 #undef ETHER_ADDR_LEN
 
-#include <sys/select.h>
-#include <sys/socket.h>
-#include <sys/socket.h>
-#include <linux/if_packet.h>
-#include <net/ethernet.h> /* the L2 protocols */
-#include <net/if.h>
-#include <arpa/inet.h>
-#include <sys/ioctl.h>
-#include <sys/select.h>
-
 #include "reacsocket.h"
 #include "ringbuf.h"
 #define SETTINGS_INSTANCIATE
@@ -28,8 +18,6 @@
 #undef SETTINGS_INSTANCIATE
 
 // instances
-static int sock;
-static int g_ifindex;
 uint8_t interfaceAddr[ETHER_ADDR_LEN];
 uint8_t master_addr[ETHER_ADDR_LEN] = {0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF};
 bool connected = 0;
@@ -50,11 +38,6 @@ uint16_t counter_recv_last=0, counter_recv_last1=0;
 uint32_t counter_recv_upper=0;
 bool counter_recv_second = 0;
 uint32_t n_samples = 0;
-
-static int get_hwaddr(int fd)
-{
-	return 0; // TODO implement me
-}
 
 static
 int write_packets(const uint8_t *data, int len)
