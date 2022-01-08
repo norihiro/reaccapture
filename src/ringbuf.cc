@@ -5,7 +5,7 @@ ringbuf::ringbuf()
 {
 	start = 0;
 	end = 0;
-	mutex = PTHREAD_MUTEX_INITIALIZER;
+	pthread_mutex_init(&mutex, NULL);
 }
 
 void ringbuf::wrote()
