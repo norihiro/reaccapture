@@ -6,6 +6,7 @@
 #include <cctype>
 #include <unistd.h>
 #include <sys/time.h>
+#include "src/fastwrite.h"
 
 // to suppress warning
 #include "mac-reacdriver/REACDataStream.h"
@@ -32,7 +33,8 @@ static HandshakeState g_handshake_state;
 static unsigned int recievedPacketCounter = 0;
 static int n_master_in_channels=0, n_master_out_channels=0;
 static uint8_t splitIdentifier;
-FILE *fp_outputs[40] = {0};
+fileio_t *fp_outputs[40] = {0};
+static int i_flush_next = 0;
 int n_skipped_counter = 0;
 uint16_t counter_recv_last=0, counter_recv_last1=0;
 uint32_t counter_recv_upper=0;
@@ -65,16 +67,16 @@ int load_packets(FILE *fp)
 	return 0;
 }
 
-static FILE* fopen_output(int ch, const char *fmt)
+static fileio_t* fopen_output(int ch, const char *fmt)
 {
 	if(settings::of_name[ch]) {
-		return fopen(settings::of_name[ch], "wb");
+		return create_fastwrite(settings::of_name[ch]);
 	}
 	else {
 		char name[64];
 		snprintf(name, sizeof(name), fmt, ch+1);
 		name[sizeof(name)-1] = 0;
-		return fopen(name, "wb");
+		return create_fastwrite(name);
 	}
 }
 
@@ -104,7 +106,7 @@ int save_wav_init()
 		else {
 			fp_outputs[i] = fopen_output(i, "output-%02d.wav");
 			uint8_t data[44] = {"RIFF"};
-			fwrite(data, 44, 1, fp_outputs[i]);
+			fio_write(fp_outputs[i], data, 44);
 		}
 	}
 	return 0;
@@ -148,12 +150,18 @@ int save_wav_fin()
 	for(int i=0; i<40; i++) if(fp_outputs[i]) {
 		uint32_t n_channel = (settings::stereo_channel & (1LL<<i)) ? 2 : 1;
 		if(n_channel==2 && i&1) continue;
-		FILE *fp = fp_outputs[i];
-		fseek(fp, 0, SEEK_SET);
-		fwrite(headers[n_channel-1], 44, 1, fp);
-		fclose(fp); fp_outputs[i]=0;
+		fileio_t *fp = fp_outputs[i];
+		fio_seek(fp, 0, SEEK_SET);
+		fio_write(fp, headers[n_channel-1], 44);
+		fio_close(fp); fp_outputs[i]=0;
 	}
 	return 0;
+}
+
+static inline void write_binary(fileio_t *fio, const void *b, size_t n)
+{
+	if (fio)
+		fio_write(fio, b, n);
 }
 
 static
@@ -164,18 +172,23 @@ void save_pcm_data_s24be(const uint8_t *data, int skipped)
 		uint8_t x[len]; memset(x, 0, len);
 		fprintf(stderr, "padding %d samples\n", len/3);
 		for(int i=0; i<40; i++)
-			if(fp_outputs[i]) fwrite(x, len, 1, fp_outputs[i]);
+			write_binary(fp_outputs[i], x, len);
 	}
 
 	for(int j=0; j<12; j++) {
 		for(int i=0; i<40; i+=2) {
 			uint8_t x[3] = {data[1], data[0], data[3]};
 			uint8_t y[3] = {data[2], data[5], data[4]};
-			if(fp_outputs[i+0]) fwrite(x, 3, 1, fp_outputs[i+0]);
-			if(fp_outputs[i+1]) fwrite(y, 3, 1, fp_outputs[i+1]);
+			write_binary(fp_outputs[i+0], x, 3);
+			write_binary(fp_outputs[i+1], y, 3);
 			data += 6;
 		}
 	}
+
+	if (i_flush_next < 40)
+		fio_flush(fp_outputs[i_flush_next]);
+	// The magic number is determined experimentally not to exceed N_BUFFER in fastwrite.c.
+	i_flush_next = (i_flush_next + 41) % 709;
 }
 
 static
@@ -186,18 +199,23 @@ void save_pcm_data_s24le(const uint8_t *data, int skipped)
 		uint8_t x[len]; memset(x, 0, len);
 		fprintf(stderr, "padding %d samples\n", len/3);
 		for(int i=0; i<40; i++)
-			if(fp_outputs[i]) fwrite(x, len, 1, fp_outputs[i]);
+			write_binary(fp_outputs[i], x, len);
 	}
 
 	for(int j=0; j<12; j++) {
 		for(int i=0; i<40; i+=2) {
 			uint8_t x[3] = {data[3], data[0], data[1]};
 			uint8_t y[3] = {data[4], data[5], data[2]};
-			if(fp_outputs[i+0]) fwrite(x, 3, 1, fp_outputs[i+0]);
-			if(fp_outputs[i+1]) fwrite(y, 3, 1, fp_outputs[i+1]);
+			write_binary(fp_outputs[i+0], x, 3);
+			write_binary(fp_outputs[i+1], y, 3);
 			data += 6;
 		}
 	}
+
+	if (i_flush_next < 40)
+		fio_flush(fp_outputs[i_flush_next]);
+	// The magic number is determined experimentally not to exceed N_BUFFER in fastwrite.c.
+	i_flush_next = (i_flush_next + 41) % 709;
 }
 
 static
@@ -208,18 +226,23 @@ void save_pcm_data_s16be(const uint8_t *data, int skipped)
 		uint8_t x[len]; memset(x, 0, len);
 		fprintf(stderr, "padding %d samples\n", len/3);
 		for(int i=0; i<40; i++)
-			if(fp_outputs[i]) fwrite(x, len, 1, fp_outputs[i]);
+			write_binary(fp_outputs[i], x, len);
 	}
 
 	for(int j=0; j<12; j++) {
 		for(int i=0; i<40; i+=2) {
 			uint8_t x[2] = {data[1], data[0]};
 			uint8_t y[2] = {data[2], data[5]};
-			if(fp_outputs[i+0]) fwrite(x, 2, 1, fp_outputs[i+0]);
-			if(fp_outputs[i+1]) fwrite(y, 2, 1, fp_outputs[i+1]);
+			write_binary(fp_outputs[i+0], x, 2);
+			write_binary(fp_outputs[i+1], y, 2);
 			data += 6;
 		}
 	}
+
+	if (i_flush_next < 40)
+		fio_flush(fp_outputs[i_flush_next]);
+	// The magic number is determined experimentally not to exceed N_BUFFER in fastwrite.c.
+	i_flush_next = (i_flush_next + 41) % 911;
 }
 
 static
@@ -230,18 +253,23 @@ void save_pcm_data_s16le(const uint8_t *data, int skipped)
 		uint8_t x[len]; memset(x, 0, len);
 		fprintf(stderr, "padding %d samples\n", len/3);
 		for(int i=0; i<40; i++)
-			if(fp_outputs[i]) fwrite(x, len, 1, fp_outputs[i]);
+			write_binary(fp_outputs[i], x, len);
 	}
 
 	for(int j=0; j<12; j++) {
 		for(int i=0; i<40; i+=2) {
 			uint8_t x[2] = {data[0], data[1]};
 			uint8_t y[2] = {data[5], data[2]};
-			if(fp_outputs[i+0]) fwrite(x, 2, 1, fp_outputs[i+0]);
-			if(fp_outputs[i+1]) fwrite(y, 2, 1, fp_outputs[i+1]);
+			write_binary(fp_outputs[i+0], x, 2);
+			write_binary(fp_outputs[i+1], y, 2);
 			data += 6;
 		}
 	}
+
+	if (i_flush_next < 40)
+		fio_flush(fp_outputs[i_flush_next]);
+	// The magic number is determined experimentally not to exceed N_BUFFER in fastwrite.c.
+	i_flush_next = (i_flush_next + 41) % 911;
 }
 
 static uint8_t check_checksum(const REACPacketHeader *packet)

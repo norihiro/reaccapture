@@ -10,12 +10,14 @@ reaccapture_SOURCES = \
 	src/reaccapture.cc \
 	src/reacsocket.cc \
 	src/ringbuf.cc \
+	src/fastwrite.c \
 	src/pcaploader.cc
 
 nobase_include_HEADERS = \
 	src/settings.h \
 	src/reacsocket.h \
 	src/ringbuf.h \
+	src/fastwrite.h \
 	src/constants.h \
 	mac-reacdriver/REACConstants.h \
 	mac-reacdriver/REACDataStream.h \
