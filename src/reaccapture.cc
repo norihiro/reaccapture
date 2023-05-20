@@ -93,6 +93,8 @@ int save_pcm_init()
 	return 0;
 }
 
+#define WAV_HEADER_SIZE 44
+
 static
 int save_wav_init()
 {
@@ -103,8 +105,8 @@ int save_wav_init()
 		}
 		else {
 			fp_outputs[i] = fopen_output(i, "output-%02d.wav");
-			uint8_t data[44] = {"RIFF"};
-			fwrite(data, 44, 1, fp_outputs[i]);
+			uint8_t data[WAV_HEADER_SIZE] = {"RIFF"};
+			fwrite(data, WAV_HEADER_SIZE, 1, fp_outputs[i]);
 		}
 	}
 	return 0;
@@ -125,7 +127,7 @@ int save_wav_fin()
 
 		// RIFF header
 		p = add32s(p, "RIFF");
-		p = add32n(p, n_byte_sample+36); // size
+		p = add32n(p, n_data_byte*n_channel+WAV_HEADER_SIZE-8); // size
 
 		// WAVE header
 		p = add32s(p, "WAVE");
