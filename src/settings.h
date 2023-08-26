@@ -36,6 +36,7 @@ namespace settings
 	E uint64_t stereo_channel V(0);
 
 	E const char *of_name[40] V({0});
+	E bool print_control;
 }
 
 #undef E

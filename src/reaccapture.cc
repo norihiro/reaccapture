@@ -316,6 +316,14 @@ int got_msg(const uint8_t *data_packet, int len_packet)
 			if(settings::mode==reacmode_split) {
 				split_got_packet(packetHeader);
 			}
+			if (settings::print_control) {
+				char line[32*4+8];
+				snprintf(line, 7, "%02X:%02X ", packetHeader->type[0], packetHeader->type[1]);
+				for (int i = 0; i < 32; i++)
+					snprintf(line + 6 + 3*i + i/8, 5, " %02X ", packetHeader->data[i]);
+				line[6 + 3*32 + 4 - 1] = 0;
+				puts(line);
+			}
 		}
 	}
 
@@ -490,6 +498,8 @@ Output options:\n\
 		Couple pair(s) of adjacent channels as stereo.\n\
 	--name-{1-40} file_name\n\
 		Set file_name as the output file name.\n\
+	--print-control\n\
+		Print control messages on the first 34 bytes following the counter.\n\
 Other options:\n\
 	-v\n\
 		Increase verbose level.\n\
@@ -564,6 +574,8 @@ int parse_arg(int argc, char **argv)
 				settings::mode = reacmode_pcap_file;
 			else if(!strcmp(ai, "--split-handshake"))
 				settings::mode = reacmode_split;
+			else if(!strcmp(ai, "--print-control"))
+				settings::print_control = true;
 			else if(!strcmp(ai, "--help")) {
 				puts(help_message);
 				return 0;
